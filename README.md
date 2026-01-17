@@ -1,96 +1,114 @@
-# MediaScra
+---
+## 📦 Applications
 
-<a alt="Nx logo" href="https://nx.dev" target="_blank" rel="noreferrer"><img src="https://raw.githubusercontent.com/nrwl/nx/master/images/nx-logo.png" width="45"></a>
+### 🌐 Web (`apps/web`)
+Next.js dashboard providing:
+- URL submission interface
+- Real-time media monitoring
+- Job progress tracking (Waiting / Active)
+- Media filtering (Image / Video)
 
-✨ Your new, shiny [Nx workspace](https://nx.dev) is ready ✨.
+---
 
-[Learn more about this workspace setup and its capabilities](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects) or run `npx nx graph` to visually explore what was created. Now, let's get you up to speed!
+### 🚪 API (`apps/api`)
+Gateway service responsible for:
+- Receiving scrape requests
+- Validating and normalizing URLs
+- Dispatching jobs to Redis queues
+- Exposing paginated media APIs
 
-## Run tasks
+---
 
-To run tasks with Nx use:
+### ⚙️ Worker (`apps/worker`)
+The core extraction engine:
+- Consumes jobs from Redis (BullMQ)
+- Fetches HTML content
+- Extracts images and videos using Cheerio
+- Normalizes and deduplicates media
+- Persists results into SQLite
 
-```sh
-npx nx <target> <project-name>
-```
+Designed for high concurrency with minimal memory usage.
 
-For example:
+---
 
-```sh
-npx nx build myproject
-```
+## 📚 Shared Library (`libs/shared`)
 
-These targets are either [inferred automatically](https://nx.dev/concepts/inferred-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) or defined in the `project.json` or `package.json` files.
+The shared library acts as the core brain of the system.
 
-[More about running tasks in the docs &raquo;](https://nx.dev/features/run-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+### `repositories/`
+Data access abstraction:
+- `media.repository.ts`
+- `site.repository.ts`
 
-## Add new projects
+### `scraper.ts`
+- HTML parsing
+- Media filtering and normalization
+- URL resolution and deduplication
 
-While you could add new projects to your workspace manually, you might want to leverage [Nx plugins](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) and their [code generation](https://nx.dev/features/generate-code?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) feature.
+### `queue.ts`
+Centralized Redis / BullMQ configuration shared across services.
 
-To install a new plugin you can use the `nx add` command. Here's an example of adding the React plugin:
-```sh
-npx nx add @nx/react
-```
+QUEUE UI 
 
-Use the plugin's generator to create new projects. For example, to create a new React app or library:
+http://localhost:3333/admin/queues/queue/scrape-media?status=waiting
 
-```sh
-# Generate an app
-npx nx g @nx/react:app demo
+### `db.ts`
+SQLite lifecycle management optimized for write-heavy workloads.
 
-# Generate a library
-npx nx g @nx/react:lib some-lib
-```
+---
 
-You can use `npx nx list` to get a list of installed plugins. Then, run `npx nx list <plugin-name>` to learn about more specific capabilities of a particular plugin. Alternatively, [install Nx Console](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) to browse plugins and generators in your IDE.
+--- RUN ON DEVELOP 
+  
+  "start": "nx run-many -t serve -p web-app api worker --parallel=3"
 
-[Learn more about Nx plugins &raquo;](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) | [Browse the plugin registry &raquo;](https://nx.dev/plugin-registry?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+  "api": "nx serve api"
 
-## Set up CI!
+  "worker": "nx serve worker"
 
-### Step 1
+  "web": "nx serve web-app"
 
-To connect to Nx Cloud, run the following command:
+## 🐳 Docker Deployment
 
-```sh
-npx nx connect
-```
+The full stack can be deployed using Docker Compose.
 
-Connecting to Nx Cloud ensures a [fast and scalable CI](https://nx.dev/ci/intro/why-nx-cloud?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects) pipeline. It includes features such as:
+### Run Entire System
+```bash
+docker compose up -d --build
 
-- [Remote caching](https://nx.dev/ci/features/remote-cache?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task distribution across multiple machines](https://nx.dev/ci/features/distribute-task-execution?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Automated e2e test splitting](https://nx.dev/ci/features/split-e2e-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Task flakiness detection and rerunning](https://nx.dev/ci/features/flaky-tasks?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+Run Services Individually
 
-### Step 2
+docker compose up -d --build api
+docker compose up -d --build worker
+docker compose up -d --build web
+docker compose up 
 
-Use the following command to configure a CI workflow for your workspace:
+🧪 Load Testing — 5,000 Concurrent URLs
 
-```sh
-npx nx g ci-workflow
-```
+UI-Based Test
+	1.	Open the Web Dashboard
+	2.	Trigger the 5,000 URL test
+	3.	Observe Redis queue depth, worker throughput, and system resource usage
 
-[Learn more about Nx on CI](https://nx.dev/ci/intro/ci-with-nx#ready-get-started-with-your-provider?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+API-Based Trigger
+POST /sites/scrape
+{
+  "urls": [
+    "https://kenh14.vn/star.chn",
+    "https://kenh14.vn/musik.chn",
+    "https://kenh14.vn/cinet.chn"
+  ]
+}
 
-## Install Nx Console
+Monitoring & Debugging
 
-Nx Console is an editor extension that enriches your developer experience. It lets you run tasks, generate code, and improves code autocompletion in your IDE. It is available for VSCode and IntelliJ.
+ # Visualize Nx dependency graph
+npx nx graph
 
-[Install Nx Console &raquo;](https://nx.dev/getting-started/editor-setup?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+# Monitor Redis queue activity
+docker compose exec redis redis-cli monitor
 
-## Useful links
+# Inspect container resource usage
+docker stats
 
-Learn more:
-
-- [Learn more about this workspace setup](https://nx.dev/getting-started/intro#learn-nx?utm_source=nx_project&amp;utm_medium=readme&amp;utm_campaign=nx_projects)
-- [Learn about Nx on CI](https://nx.dev/ci/intro/ci-with-nx?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [Releasing Packages with Nx release](https://nx.dev/features/manage-releases?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-- [What are Nx plugins?](https://nx.dev/concepts/nx-plugins?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
-
-And join the Nx community:
-- [Discord](https://go.nx.dev/community)
-- [Follow us on X](https://twitter.com/nxdevtools) or [LinkedIn](https://www.linkedin.com/company/nrwl)
-- [Our Youtube channel](https://www.youtube.com/@nxdevtools)
-- [Our blog](https://nx.dev/blog?utm_source=nx_project&utm_medium=readme&utm_campaign=nx_projects)
+# Reset Redis queue
+docker compose exec redis redis-cli flushall
